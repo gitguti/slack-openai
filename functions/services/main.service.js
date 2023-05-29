@@ -1,9 +1,21 @@
 const {Configuration, OpenAIApi} = require("openai");
+const {App} = require("@slack/bolt");
+require("dotenv").config();
 
+// OpenAI API configuration
 const configuration = new Configuration({
-  apiKey: "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",
+  apiKey: process.env.OPENAI_API_KEY,
 });
 const openai = new OpenAIApi(configuration);
+
+// Slack App configuration
+const app = new App({
+  token: process.env.SLACK_BOT_TOKEN,
+  signingSecret: process.env.SLACK_SIGNING_SECRET,
+  socketMode: true,
+  appToken: process.env.SLACK_APP_TOKEN,
+  port: process.env.PORT || 3000,
+});
 
 const findKeyword = async (message) => {
   const keyword = await openai.createCompletion({
@@ -18,7 +30,7 @@ const findKeyword = async (message) => {
   return keyword.data.choices[0].text;
 };
 // eslint-disable-next-line require-jsdoc
-const findSentiment = async (message) =>{
+const findSentiment = async (message) => {
   const sentiment = await openai.createCompletion({
     model: "text-davinci-003",
     prompt: "Classify the sentiment in these tweets:\n\n" + message,
@@ -30,6 +42,37 @@ const findSentiment = async (message) =>{
   });
   return sentiment.data.choices[0].text;
 };
+
+// Slack Slash Command Handler
+app.command("/openai", async ({command, ack, client}) => {
+  // Acknowledge command request
+  await ack();
+
+  // Respond with message to user
+  const articleMessage = await client.chat.postMessage({
+    // eslint-disable-next-line max-len
+    text: `:hourglass: *Generating Blog Article* - [Your Input: ${command.text}]`,
+    channel: command.channel_id,
+  });
+    // Generate Article
+  const article = await main(command.text);
+  // Get message timestamp from response
+  const messageTimestamp = articleMessage.ts;
+  // Update Message with Article
+  await client.chat.update({
+    channel: command.channel_id,
+    ts: messageTimestamp,
+    text: `*Article Generated* :white_check_mark: ${article}`,
+  });
+});
+
+(async () => {
+  // Start your app
+  await app.start();
+
+  console.log("⚡️ Bolt app is running!");
+})();
+
 
 const main = async (message) => {
   try {
