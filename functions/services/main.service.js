@@ -21,14 +21,20 @@ const app = new App({
 const findSentiment = async (message) => {
   const sentiment = await openai.createCompletion({
     model: "text-davinci-003",
-    prompt: "Classify the sentiment in these tweets:\n\n" + message,
+    // eslint-disable-next-line max-len
+    prompt: "Classify the sentiment between 'positive' or 'negative' in this message:" + message,
     temperature: 0,
-    max_tokens: 60,
+    max_tokens: 20,
     top_p: 1.0,
     frequency_penalty: 0.0,
     presence_penalty: 0.0,
   });
-  return sentiment.data.choices[0].text;
+  let sentimentText = sentiment.data.choices[0].text.trim().toLowerCase();
+  if (sentimentText.endsWith(".")) {
+    sentimentText = sentimentText.slice(0, -1);
+    // Eliminar el último carácter (el punto)
+  }
+  return sentimentText;
 };
 
 const generateResume = async (message) => {
@@ -88,18 +94,29 @@ app.event("message", async ({event, client}) => {
   try {
     // Verificar si el mensaje es de tipo "message" y no proviene del bot
     if (event.type === "message" && !event.bot_id) {
-      // Obtener el ID del canal y el timestamp del mensaje
-      const {channel, ts} = event;
+      // Obtener el mensaje y realizar el análisis de sentimiento
+      const message = event.text;
+      const sentiment = await findSentiment(message);
 
-      // Agregar la reacción de "mano arriba" al mensaje
-      await client.reactions.add({
-        channel,
-        timestamp: ts,
-        name: "thumbsup",
-      });
+      // Reactuar al mensaje basado en el sentimiento
+      if (sentiment === "positive") {
+        await client.reactions.add({
+          token: process.env.SLACK_BOT_TOKEN,
+          name: "thumbsup",
+          channel: event.channel,
+          timestamp: event.ts,
+        });
+      } else if (sentiment === "negative") {
+        await client.reactions.add({
+          token: process.env.SLACK_BOT_TOKEN,
+          name: "thumbsdown",
+          channel: event.channel,
+          timestamp: event.ts,
+        });
+      }
     }
   } catch (error) {
-    console.error("Error al agregar la reacción:", error);
+    console.error("Error al procesar el mensaje:", error);
   }
 });
 
