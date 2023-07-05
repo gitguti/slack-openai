@@ -33,7 +33,7 @@ To add the bot to your Slack workspace, please follow these instructions:
 
 Once the project is running and the bot is added to your Slack workspace, you can start using the integration. The bot will automatically classify incoming messages as positive or negative. Additionally, you can request the bot to provide a summary of the messages from the last 30 minutes.
 
-##Demo
+## Demo
 https://www.youtube.com/watch?v=yZcC1QiGeEo&t=1s
 
 ## Contributing
